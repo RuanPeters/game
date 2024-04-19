@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="scripts/phaser.min.js"></script>
+</head>
+
+<body>
+
+  <script>
+
+    var width = 300;
+    var height = 600;
+    var countDownStep = 3;
+    var ballSize = 75;
+    var timedEvent;
+    var balls = [];
+    var rorationSpeeds = [];
+    var numberOfBalls = 10;
+    var texts = [];
+    var ballFinishedCount = 0;
+
+    class Frame_1 extends Phaser.Scene {
+      constructor() {
+        super({ key: 'Frame_1' });
+      }
+      preload() {
+        this.load.image('background', 'images/background.jpg');
+        this.load.image('ball', 'images/coin.png');
+        this.load.image('frame_1_overlay', 'images/SuperSportBET_Catch_The_Coin_Frame_1.png');
+        this.load.image('frame_2_overlay', 'images/SuperSportBET_Catch_The_Coin_Frame_2.png');
+        this.load.image('frame_3_overlay', 'images/SuperSportBET_Catch_The_Coin_Frame_3.png');
+        this.load.image('frame_4_overlay', 'images/SuperSportBET_Catch_The_Coin_Frame_4.png');
+        this.load.bitmapFont('the_font', 'fonts/MTN.png', 'fonts/MTN.fnt');
+      }
+      create() {
+        this.add.image(width / 2, height / 2, 'background');
+        this.add.image(width / 2, height / 2, 'frame_1_overlay').setInteractive();
+
+        this.input.on('gameobjectdown', this.onGameObjectDown)
+      }
+      onGameObjectDown(pointer, gameObject) {
+        this.scene.scene.start('Frame_2');
+      }
+    }
+
+    class Frame_2 extends Phaser.Scene {
+      constructor() {
+        super({ key: 'Frame_2' });
+      }
+      create() {
+        this.add.image(width / 2, height / 2, 'background');
+        this.add.image(width / 2, height / 2, 'frame_2_overlay');
+
+        this.setCountDownText(countDownStep)
+      }
+      onTweenComplete(ctx) {
+        if (countDownStep > 0) {
+          countDownStep--;
+          this.setCountDownText(countDownStep);
+        }
+        else {
+          this.scene.start('Frame_3');
+        }
+      }
+      update() {
+        this.countDownText
+      }
+      setCountDownText(text) {
+        if (this.countDownText !== undefined) {
+          this.countDownText.destroy();
+        }
+        if (text == 0) {
+          text = 'GO!'
+        }
+        this.countDownText = this.add.bitmapText(width / 2, height / 2, 'the_font', text, 64);
+        this.countDownText.setOrigin(0.5, 0.5);
+        this.tweens.add({
+          targets: this.countDownText,
+          scale: 2,
+          ease: 'Power1',
+          duration: 1000,
+          onComplete: this.onTweenComplete.bind(this),
+          onCompleteParams: [this]
+        });
+      }
+    }
+
+    class Frame_3 extends Phaser.Scene {
+      constructor() {
+        super({ key: 'Frame_3' });
+      }
+      create() {
+        this.add.image(width / 2, height / 2, 'background');
+        var frame_3_overlay = this.add.image(width / 2, height / 2, 'frame_3_overlay');
+        frame_3_overlay.depth = 3;
+        timedEvent = this.time.addEvent({ delay: 1000, callback: this.onBallDrop, callbackScope: this, repeat: numberOfBalls - 1 });
+        this.input.on('gameobjectup', function (pointer, gameObject) {
+          gameObject.emit('clicked', gameObject);
+        }, this);
+      }
+      update() {
+        balls.forEach((item, index) => {
+          item.angle += rorationSpeeds[index];
+          if (item.y > (height + ballSize) && item.isDestroyed == false) {
+            item.destroy();
+            item.isDestroyed = true;
+            ballFinishedCount += 1;
+          }
+        })
+        texts.forEach((item, index) => {
+          item.y -= 1;
+        })
+
+        if (ballFinishedCount === numberOfBalls) {
+          this.scene.start('Frame_4');
+        }
+      }
+      onBallDrop() {
+        var xPos = Phaser.Math.Between(ballSize / 2, width - ballSize / 2);
+
+        var ball = this.physics.add.image(xPos, -ballSize, 'ball');
+        ball.setInteractive();
+        ball.on('clicked', this.onBallClicked, this);
+        ball.isDestroyed = false;
+        ball.depth = 1;
+        ball.setBodySize(ballSize*1.2, ballSize*1.4);
+        balls.push(ball);
+
+        var t = 0;
+        while (t == 0) { // make sure roration is never zero
+          t = Phaser.Math.Between(-2, 2);
+        }
+        rorationSpeeds.push(t);
+      }
+      onBallClicked(ball) {
+        var text = this.add.text(ball.x, ball.y, '+1');
+
+        texts.push(text);
+        ball.destroy();
+        ballFinishedCount += 1;
+      }
+    }
+
+    class Frame_4 extends Phaser.Scene {
+      constructor() {
+        super({ key: 'Frame_4' });
+      }
+      create() {
+        this.add.image(width / 2, height / 2, 'background');
+        this.add.image(width / 2, height / 2, 'frame_4_overlay')
+      }
+    }
+
+    var config = {
+      type: Phaser.AUTO,
+      width: width,
+      height: height,
+      backgroundColor: '#000000',
+      physics: {
+        default: 'arcade',
+        arcade: {
+          gravity: { y: 200 }
+          // debug: true
+        }
+      },
+      scene: [Frame_1, Frame_2, Frame_3, Frame_4]
+    };
+
+    var game = new Phaser.Game(config);
+  </script>
+  <style>
+    canvas {
+      border: 1px solid black;
+    }
+  </style>
+</body>
+
+</html>
